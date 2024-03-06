@@ -128,7 +128,8 @@ declare os: {
     clock: () -> number,
 }
 
-declare function require(target: any): any
+declare function requirea(target: any): any
+declare function shared(target: any): any
 
 declare function getfenv(target: any): { [string]: any }
 
@@ -321,6 +322,7 @@ declare os: {
 }
 
 declare function @checked require(target: any): any
+declare function @checked shared(target: any): any
 
 declare function @checked getfenv(target: any): { [string]: any }
 

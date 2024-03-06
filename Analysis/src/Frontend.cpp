@@ -27,6 +27,11 @@
 #include <stdexcept>
 #include <string>
 
+#ifdef _WIN32
+#include <io.h>
+#include <iostream>
+#endif
+
 LUAU_FASTINT(LuauTypeInferIterationLimit)
 LUAU_FASTINT(LuauTypeInferRecursionLimit)
 LUAU_FASTINT(LuauTarjanChildLimit)
@@ -431,6 +436,8 @@ void Frontend::parse(const ModuleName& name)
 
 CheckResult Frontend::check(const ModuleName& name, std::optional<FrontendOptions> optionOverride)
 {
+    std::cerr << "check build queue items" << "\n";
+
     LUAU_TIMETRACE_SCOPE("Frontend::check", "Frontend");
     LUAU_TIMETRACE_ARGUMENT("name", name.c_str());
 
@@ -841,6 +848,8 @@ void Frontend::addBuildQueueItems(std::vector<BuildQueueItem>& items, std::vecto
         if (seen.contains(moduleName))
             continue;
         seen.insert(moduleName);
+
+        std::cerr << "see module: " << moduleName.c_str() << "\n";
 
         LUAU_ASSERT(sourceNodes.count(moduleName));
         std::shared_ptr<SourceNode>& sourceNode = sourceNodes[moduleName];
@@ -1471,6 +1480,21 @@ std::optional<ModuleInfo> FrontendModuleResolver::resolveModuleInfo(const Module
     }
 
     const auto& exprs = it->second.exprs;
+
+    // std::cerr << frontend->rootUri.c_str() << "\n";
+    
+    if (const AstExprConstantString* stringKey = pathExpr.as<AstExprConstantString>()) {
+        std::string str = std::string(stringKey->value.data, stringKey->value.size);
+        for (auto [name, module] : frontend->sourceModules) {
+            auto shortenName = name.substr(0, name.find_first_of("."));
+            std::cerr << shortenName.c_str() << "\n";
+
+            for (auto s : split(shortenName, '/')) {
+                std::string sc = std::string(s.data(), s.size());
+                std::cerr << sc.c_str() << "\n";
+            }
+        }
+    }
 
     const ModuleInfo* info = exprs.find(&pathExpr);
     if (!info)

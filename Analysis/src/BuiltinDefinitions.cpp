@@ -14,7 +14,11 @@
 #include "Luau/TypePack.h"
 #include "Luau/Type.h"
 #include "Luau/TypeUtils.h"
-
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <iostream>
+#endif
 #include <algorithm>
 
 /** FIXME: Many of these type definitions are not quite completely accurate.
@@ -39,7 +43,8 @@ static std::optional<WithPredicate<TypePackId>> magicFunctionPack(
     TypeChecker& typechecker, const ScopePtr& scope, const AstExprCall& expr, WithPredicate<TypePackId> withPredicate);
 static std::optional<WithPredicate<TypePackId>> magicFunctionRequire(
     TypeChecker& typechecker, const ScopePtr& scope, const AstExprCall& expr, WithPredicate<TypePackId> withPredicate);
-
+static std::optional<WithPredicate<TypePackId>> magicFunctionShared(
+    TypeChecker& typechecker, const ScopePtr& scope, const AstExprCall& expr, WithPredicate<TypePackId> withPredicate);
 
 static bool dcrMagicFunctionSelect(MagicFunctionCallContext context);
 static bool dcrMagicFunctionRequire(MagicFunctionCallContext context);
@@ -324,6 +329,8 @@ void registerBuiltinGlobals(Frontend& frontend, GlobalTypes& globals, bool typeC
 
     attachMagicFunction(getGlobalBinding(globals, "require"), magicFunctionRequire);
     attachDcrMagicFunction(getGlobalBinding(globals, "require"), dcrMagicFunctionRequire);
+
+    attachMagicFunction(getGlobalBinding(globals, "shared"), magicFunctionShared);
 }
 
 static std::vector<TypeId> parseFormatString(NotNull<BuiltinTypes> builtinTypes, const char* data, size_t size)
@@ -1150,6 +1157,28 @@ static std::optional<WithPredicate<TypePackId>> magicFunctionRequire(
     if (!checkRequirePath(typechecker, expr.args.data[0]))
         return std::nullopt;
 
+    if (auto moduleInfo = typechecker.resolver->resolveModuleInfo(typechecker.currentModule->name, expr))
+        return WithPredicate<TypePackId>{arena.addTypePack({typechecker.checkRequire(scope, *moduleInfo, expr.location)})};
+
+    return std::nullopt;
+}
+
+static std::optional<WithPredicate<TypePackId>> magicFunctionShared(
+    TypeChecker& typechecker, const ScopePtr& scope, const AstExprCall& expr, WithPredicate<TypePackId> withPredicate)
+{
+    TypeArena& arena = typechecker.currentModule->internalTypes;
+
+    if (expr.args.size != 1)
+    {
+        typechecker.reportError(TypeError{expr.location, GenericError{"require takes 1 argument"}});
+        return std::nullopt;
+    }
+
+    if (!checkRequirePath(typechecker, expr.args.data[0]))
+        return std::nullopt;
+
+    std::cerr << "resolved" << "\n";
+    std::cerr << typechecker.currentModule->name.c_str() << "\n";
     if (auto moduleInfo = typechecker.resolver->resolveModuleInfo(typechecker.currentModule->name, expr))
         return WithPredicate<TypePackId>{arena.addTypePack({typechecker.checkRequire(scope, *moduleInfo, expr.location)})};
 

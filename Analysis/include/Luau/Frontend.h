@@ -106,6 +106,7 @@ struct FrontendOptions
 
     // When true, some internal complexity limits will be scaled down for modules that miss the limit set by moduleTimeLimitSec
     bool applyInternalLimitScaling = false;
+    bool applyInternalLimitScaling2 = false;
 };
 
 struct CheckResult
@@ -134,6 +135,8 @@ private:
 
     mutable std::mutex moduleMutex;
     std::unordered_map<ModuleName, ModulePtr> modules;
+
+    bool rootaaaaaa = false;
 };
 
 struct Frontend
@@ -142,6 +145,7 @@ struct Frontend
     {
         size_t files = 0;
         size_t lines = 0;
+        // size_t extralines = 0;
 
         size_t filesStrict = 0;
         size_t filesNonstrict = 0;
@@ -230,6 +234,8 @@ public:
 
     GlobalTypes globals;
     GlobalTypes globalsForAutocomplete;
+    // std::optional<std::string> rootUri = std::nullopt;
+    // bool root = false;
 
     ConfigResolver* configResolver;
     FrontendOptions options;
@@ -244,6 +250,7 @@ public:
     Stats stats = {};
 
     std::vector<ModuleName> moduleQueue;
+    // std::vector<ModuleName> moduleQueue2;
 };
 
 ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<RequireCycle>& requireCycles, NotNull<BuiltinTypes> builtinTypes,

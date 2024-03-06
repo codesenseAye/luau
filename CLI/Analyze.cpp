@@ -17,6 +17,12 @@
 #include <utility>
 #include <fstream>
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <iostream>
+#endif
+
 #ifdef CALLGRIND
 #include <valgrind/callgrind.h>
 #endif
@@ -375,7 +381,7 @@ int main(int argc, char** argv)
 #endif
 
     std::vector<std::string> files = getSourceFiles(argc, argv);
-
+    std::cerr << "base path: " << basePath.c_str() << "\n";
     for (const std::string& path : files)
         frontend.queueModuleCheck(path);
 

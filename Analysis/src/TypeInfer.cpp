@@ -1570,13 +1570,6 @@ ControlFlow TypeChecker::check(const ScopePtr& scope, const AstStatTypeAlias& ty
         aliasScope->privateTypeBindings[generic->name] = TypeFun{{}, param.ty};
     }
 
-    for (auto param : binding->typePackParams)
-    {
-        auto generic = get<GenericTypePack>(param.tp);
-        LUAU_ASSERT(generic);
-        aliasScope->privateTypePackBindings[generic->name] = param.tp;
-    }
-
     TypeId ty = resolveType(aliasScope, *typealias.type);
     if (auto ttv = getMutable<TableType>(follow(ty)))
     {
@@ -4652,19 +4645,24 @@ WithPredicate<TypePackId> TypeChecker::checkExprList(const ScopePtr& scope, cons
 
 std::optional<AstExpr*> TypeChecker::matchRequire(const AstExprCall& call)
 {
-    const char* require = "require";
-
-    if (call.args.size != 1)
-        return std::nullopt;
-
-    const AstExprGlobal* funcAsGlobal = call.func->as<AstExprGlobal>();
-    if (!funcAsGlobal || funcAsGlobal->name != require)
+   if (call.args.size != 1)
         return std::nullopt;
 
     if (call.args.size != 1)
         return std::nullopt;
+        
+    const char* require[2] = {"require", "shared"};
 
-    return call.args.data[0];
+    for (const char* requireChar : require)
+    {
+        const AstExprGlobal* funcAsGlobal = call.func->as<AstExprGlobal>();
+        if (!funcAsGlobal || funcAsGlobal->name != requireChar)
+            continue;
+
+        return call.args.data[0];
+    }
+
+    return std::nullopt;
 }
 
 TypeId TypeChecker::checkRequire(const ScopePtr& scope, const ModuleInfo& moduleInfo, const Location& location)
