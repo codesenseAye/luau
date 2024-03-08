@@ -123,8 +123,14 @@ struct FrontendModuleResolver : ModuleResolver
     FrontendModuleResolver(Frontend* frontend);
 
     const ModulePtr getModule(const ModuleName& moduleName) const override;
+    const std::shared_ptr<SourceModule> getSourceModule(const ModuleName& moduleName) const override;
     bool moduleExists(const ModuleName& moduleName) const override;
     std::optional<ModuleInfo> resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr) override;
+    std::optional<ModuleInfo> getMatch(const AstExprConstantString*stringKey);
+    std::optional<ModuleInfo> getMatch(const std::string stringKey);
+    std::optional<ModuleInfo> getMatchFromString(const std::string str);
+    std::optional<ModuleInfo> getSpecificModuleMatch(const ModuleName &name, std::vector<std::string_view> query);
+    std::optional<std::string> getRoot();
     std::string getHumanReadableModuleName(const ModuleName& moduleName) const override;
 
     void setModule(const ModuleName& moduleName, ModulePtr module);
@@ -135,8 +141,6 @@ private:
 
     mutable std::mutex moduleMutex;
     std::unordered_map<ModuleName, ModulePtr> modules;
-
-    bool rootaaaaaa = false;
 };
 
 struct Frontend
@@ -145,7 +149,6 @@ struct Frontend
     {
         size_t files = 0;
         size_t lines = 0;
-        // size_t extralines = 0;
 
         size_t filesStrict = 0;
         size_t filesNonstrict = 0;
@@ -154,6 +157,10 @@ struct Frontend
         double timeParse = 0;
         double timeCheck = 0;
         double timeLint = 0;
+    };
+    
+    struct Source {
+        std::vector<std::string> workspaceFolders;
     };
 
     Frontend(FileResolver* fileResolver, ConfigResolver* configResolver, const FrontendOptions& options = {});
@@ -234,8 +241,6 @@ public:
 
     GlobalTypes globals;
     GlobalTypes globalsForAutocomplete;
-    // std::optional<std::string> rootUri = std::nullopt;
-    // bool root = false;
 
     ConfigResolver* configResolver;
     FrontendOptions options;
@@ -248,9 +253,9 @@ public:
     std::unordered_map<ModuleName, RequireTraceResult> requireTrace;
 
     Stats stats = {};
+    Source source = {};
 
     std::vector<ModuleName> moduleQueue;
-    // std::vector<ModuleName> moduleQueue2;
 };
 
 ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<RequireCycle>& requireCycles, NotNull<BuiltinTypes> builtinTypes,

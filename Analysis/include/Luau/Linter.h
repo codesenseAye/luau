@@ -16,6 +16,7 @@ class AstStat;
 class AstNameTable;
 struct TypeChecker;
 struct Module;
+struct SourceModule;
 
 using ScopePtr = std::shared_ptr<struct Scope>;
 

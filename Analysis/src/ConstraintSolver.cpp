@@ -2432,8 +2432,9 @@ TypeId ConstraintSolver::resolveModule(const ModuleInfo& info, const Location& l
     ModulePtr module = moduleResolver->getModule(info.name);
     if (!module)
     {
-        if (!moduleResolver->moduleExists(info.name) && !info.optional)
-            reportError(UnknownRequire{moduleResolver->getHumanReadableModuleName(info.name)}, location);
+        if (!moduleResolver->moduleExists(info.name) && !info.optional) {
+            reportError(UnknownRequire{moduleResolver->getHumanReadableModuleName(info.name) + " idk"}, location);
+        }
 
         return errorRecoveryType();
     }

@@ -12,6 +12,7 @@ namespace Luau
 
 class AstExpr;
 struct Module;
+struct SourceModule;
 
 using ModulePtr = std::shared_ptr<Module>;
 
@@ -40,6 +41,7 @@ struct ModuleResolver
      * or there's a cycle, and we are still in the middle of typechecking the module.
      */
     virtual const ModulePtr getModule(const ModuleName& moduleName) const = 0;
+    virtual const std::shared_ptr<SourceModule> getSourceModule(const ModuleName& moduleName) const = 0;
 
     /** Is a module known at compile time?
      *
@@ -57,6 +59,10 @@ struct NullModuleResolver : ModuleResolver
         return std::nullopt;
     }
     const ModulePtr getModule(const ModuleName& moduleName) const override
+    {
+        return nullptr;
+    }
+    const std::shared_ptr<SourceModule> getSourceModule(const ModuleName& moduleName) const override
     {
         return nullptr;
     }

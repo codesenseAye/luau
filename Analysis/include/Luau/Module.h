@@ -18,6 +18,7 @@ namespace Luau
 {
 
 struct Module;
+struct SourceModule;
 
 using ScopePtr = std::shared_ptr<struct Scope>;
 using ModulePtr = std::shared_ptr<Module>;

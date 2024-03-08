@@ -18,6 +18,7 @@
 #include "Luau/NonStrictTypeChecker.h"
 #include "Luau/TypeInfer.h"
 #include "Luau/Variant.h"
+#include "Luau/range.hpp"
 
 #include <algorithm>
 #include <chrono>
@@ -40,6 +41,8 @@ LUAU_FASTFLAGVARIABLE(LuauKnowsTheDataModel3, false)
 LUAU_FASTFLAG(DebugLuauDeferredConstraintResolution)
 LUAU_FASTFLAGVARIABLE(DebugLuauLogSolverToJson, false)
 LUAU_FASTFLAGVARIABLE(DebugLuauLogSolverToJsonFile, false)
+
+using namespace util::lang;
 
 namespace Luau
 {
@@ -436,8 +439,6 @@ void Frontend::parse(const ModuleName& name)
 
 CheckResult Frontend::check(const ModuleName& name, std::optional<FrontendOptions> optionOverride)
 {
-    std::cerr << "check build queue items" << "\n";
-
     LUAU_TIMETRACE_SCOPE("Frontend::check", "Frontend");
     LUAU_TIMETRACE_ARGUMENT("name", name.c_str());
 
@@ -446,8 +447,15 @@ CheckResult Frontend::check(const ModuleName& name, std::optional<FrontendOption
     if (std::optional<CheckResult> result = getCheckResult(name, true, frontendOptions.forAutocomplete))
         return std::move(*result);
 
+    //!! critical to getting types from required modules
+    // called from checkStrict function
+
     std::vector<ModuleName> buildQueue;
     bool cycleDetected = parseGraph(buildQueue, name, frontendOptions.forAutocomplete);
+
+    // for (auto item : buildQueue) {
+    //     std::cerr << "item in build queue: " << item.c_str() << "\n";
+    // }
 
     DenseHashSet<Luau::ModuleName> seen{{}};
     std::vector<BuildQueueItem> buildQueueItems;
@@ -650,6 +658,7 @@ std::vector<ModuleName> Frontend::checkQueuedModules(std::optional<FrontendOptio
                 if (itemWithException || cancelled)
                     break;
 
+                // std::cerr << "check build queue item 3" << "\n";
                 recordItemResult(item);
 
                 // Notify items that were waiting for this dependency
@@ -690,6 +699,7 @@ std::vector<ModuleName> Frontend::checkQueuedModules(std::optional<FrontendOptio
 
             // We might have stopped because of a pending exception
             if (itemWithException)
+                // std::cerr << "check build queue item 2" << "\n";
                 recordItemResult(buildQueueItems[*itemWithException]);
         }
 
@@ -802,6 +812,7 @@ bool Frontend::parseGraph(
             // push children
             for (const ModuleName& dep : top->requireSet)
             {
+                // std::cerr << "child: " << dep.c_str() << "\n";
                 auto it = sourceNodes.find(dep);
                 if (it != sourceNodes.end())
                 {
@@ -809,12 +820,16 @@ bool Frontend::parseGraph(
                     // this relies on the fact that markDirty marks reverse-dependencies dirty as well
                     // thus if a node is not dirty, all its transitive deps aren't dirty, which means that they won't ever need
                     // to be built, *and* can't form a cycle with any nodes we did process.
-                    if (!it->second->hasDirtyModule(forAutocomplete))
+                    if (!it->second->hasDirtyModule(forAutocomplete)) {
+                        // std::cerr << "no dirty module: " << dep.c_str() << "\n";
                         continue;
+                    }
 
                     // This module might already be in the outside build queue
-                    if (canSkip && canSkip(dep))
+                    if (canSkip && canSkip(dep)) {
+                        // std::cerr << "can skip: " << dep.c_str() << "\n";
                         continue;
+                    }
 
                     // note: this check is technically redundant *except* that getSourceNode has somewhat broken memoization
                     // calling getSourceNode twice in succession will reparse the file, since getSourceNode leaves dirty flag set
@@ -848,8 +863,6 @@ void Frontend::addBuildQueueItems(std::vector<BuildQueueItem>& items, std::vecto
         if (seen.contains(moduleName))
             continue;
         seen.insert(moduleName);
-
-        std::cerr << "see module: " << moduleName.c_str() << "\n";
 
         LUAU_ASSERT(sourceNodes.count(moduleName));
         std::shared_ptr<SourceNode>& sourceNode = sourceNodes[moduleName];
@@ -1037,6 +1050,7 @@ void Frontend::checkBuildQueueItems(std::vector<BuildQueueItem>& items)
         if (item.module && item.module->cancelled)
             break;
 
+        // std::cerr << "check build queue item 1" << "\n";
         recordItemResult(item);
     }
 }
@@ -1048,11 +1062,13 @@ void Frontend::recordItemResult(const BuildQueueItem& item)
 
     if (item.options.forAutocomplete)
     {
+        std::cerr << "add module for autocomplete: " << item.name.c_str() << "\n";
         moduleResolverForAutocomplete.setModule(item.name, item.module);
         item.sourceNode->dirtyModuleForAutocomplete = false;
     }
     else
     {
+        std::cerr << "add module regular: " << item.name.c_str() << "\n";
         moduleResolver.setModule(item.name, item.module);
         item.sourceNode->dirtyModule = false;
     }
@@ -1164,6 +1180,7 @@ ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<R
     const ScopePtr& parentScope, std::function<void(const ModuleName&, const ScopePtr&)> prepareModuleScope, FrontendOptions options,
     TypeCheckLimits limits, std::function<void(const ModuleName&, std::string)> writeJsonLog)
 {
+    // std::cerr << "CHECK MODULE 2: " << sourceModule.name << "\n";
     const bool recordJsonLog = FFlag::DebugLuauLogSolverToJson;
     return check(sourceModule, mode, requireCycles, builtinTypes, iceHandler, moduleResolver, fileResolver, parentScope,
         std::move(prepareModuleScope), options, limits, recordJsonLog, writeJsonLog);
@@ -1174,6 +1191,7 @@ ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<R
     const ScopePtr& parentScope, std::function<void(const ModuleName&, const ScopePtr&)> prepareModuleScope, FrontendOptions options,
     TypeCheckLimits limits, bool recordJsonLog, std::function<void(const ModuleName&, std::string)> writeJsonLog)
 {
+    std::cerr << "CHECK MODULE 1: " << sourceModule.name << "\n";
     ModulePtr result = std::make_shared<Module>();
     result->name = sourceModule.name;
     result->humanReadableName = sourceModule.humanReadableName;
@@ -1288,6 +1306,8 @@ ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<R
 ModulePtr Frontend::check(const SourceModule& sourceModule, Mode mode, std::vector<RequireCycle> requireCycles,
     std::optional<ScopePtr> environmentScope, bool forAutocomplete, bool recordJsonLog, TypeCheckLimits typeCheckLimits)
 {
+    std::cerr << "CHECK MODULE 3: " << sourceModule.name << "\n";
+
     if (FFlag::DebugLuauDeferredConstraintResolution)
     {
         auto prepareModuleScopeWrap = [this, forAutocomplete](const ModuleName& name, const ScopePtr& scope) {
@@ -1370,6 +1390,15 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
     SourceModule result = parse(name, source->source, opts);
     result.type = source->type;
 
+    // !!!!!!!
+    // when these lines below in this function are commented out the . autocomplete doesnt work for any require/shard
+    // figure out the difference between requires not having to open a module but a shared call having to
+    // to get autcomplete
+    
+    // !! privateTypePackBindings, is the thing you commented out that fixed the last difference
+    // maybe there is another area with the same variable that could fix  this
+    // eventually you need to figure out why that variable did that and implement a proper solution
+
     RequireTraceResult& require = requireTrace[name];
     require = traceRequires(fileResolver, result.root, name);
 
@@ -1398,8 +1427,32 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
         sourceNode->dirtyModuleForAutocomplete = true;
     }
 
-    for (const auto& [moduleName, location] : require.requireList)
+    for (auto& [moduleName, location] : require.requireList) {
+        
+        std::cerr << "TRANSFORM module name: " << moduleName.c_str() << "\n";
+        std::optional<std::string> root = moduleResolver.getRoot();
+        
+        if (!root) {
+            sourceNode->requireSet.insert(moduleName);
+            continue;
+        }
+        
+        root = root->c_str();
+
+        auto shortenName = moduleName.substr(moduleName.find_first_of(root.value()) + root->length());
+        shortenName = shortenName.substr(0, shortenName.find_last_of("."));
+
+        std::cerr << shortenName.c_str() << "\n";
+
+        std::optional<ModuleInfo> newInfo = moduleResolver.getMatch(shortenName);
+        
+        if (newInfo) {
+            std::cerr << "TRANSFORMED to module name: " << newInfo->name.c_str() << "\n";
+            moduleName = newInfo->name;
+        }
+
         sourceNode->requireSet.insert(moduleName);
+    }
 
     sourceNode->requireLocations = require.requireList;
 
@@ -1466,41 +1519,156 @@ FrontendModuleResolver::FrontendModuleResolver(Frontend* frontend)
 {
 }
 
-std::optional<ModuleInfo> FrontendModuleResolver::resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr)
-{
-    // FIXME I think this can be pushed into the FileResolver.
-    auto it = frontend->requireTrace.find(currentModuleName);
-    if (it == frontend->requireTrace.end())
-    {
-        // CLI-43699
-        // If we can't find the current module name, that's because we bypassed the frontend's initializer
-        // and called typeChecker.check directly.
-        // In that case, requires will always fail.
+std::optional<std::string> FrontendModuleResolver::getRoot() {
+    if (frontend->source.workspaceFolders.size() < 1) {
         return std::nullopt;
     }
 
-    const auto& exprs = it->second.exprs;
+    return *frontend->source.workspaceFolders.begin();
+};
 
-    // std::cerr << frontend->rootUri.c_str() << "\n";
+
+std::optional<ModuleInfo> FrontendModuleResolver::getSpecificModuleMatch(const ModuleName &name, std::vector<std::string_view> query) {
+    if (frontend->source.workspaceFolders.size() < 1) {
+        return std::nullopt;
+    }
     
-    if (const AstExprConstantString* stringKey = pathExpr.as<AstExprConstantString>()) {
-        std::string str = std::string(stringKey->value.data, stringKey->value.size);
-        for (auto [name, module] : frontend->sourceModules) {
-            auto shortenName = name.substr(0, name.find_first_of("."));
-            std::cerr << shortenName.c_str() << "\n";
+    std::string root = frontend->source.workspaceFolders.begin()->c_str();
+    auto shortenName = name.substr(name.find_first_of(root) + root.length());
+    shortenName = shortenName.substr(0, shortenName.find_last_of("."));
 
-            for (auto s : split(shortenName, '/')) {
-                std::string sc = std::string(s.data(), s.size());
-                std::cerr << sc.c_str() << "\n";
-            }
+    std::vector<std::string_view> pieces = split(shortenName, '/');
+    
+    bool matches = true;
+    unsigned int piecesNum = 0;
+    unsigned int queryNum = 0;
+    
+    for(unsigned i : indices(pieces)) {
+        piecesNum += 1;
+    }
+    
+    for(unsigned i : indices(query)) {
+        queryNum += 1;
+    }
+
+    // std::cerr << "name: " << name.c_str() << "\n";
+    // std::cerr << "name: " << shortenName << "\n";
+    // std::cerr << "pieces num: " << piecesNum << "\n";
+    // std::cerr << "query num: " << queryNum << "\n";
+    
+    for(unsigned i : indices(query)) {
+        // std::cerr << "before index: " << i << "\n";
+        unsigned qi = (queryNum - 1) - i;
+        unsigned pi = (piecesNum - 1) - i;
+        // std::cerr << "q index: " << qi << "\n";
+        // std::cerr << "p index: " << pi << "\n";
+        
+        if (i >= piecesNum) {
+            continue;
+        }
+
+        std::string queryStr = {query[qi].begin(), query[qi].end()};
+        std::string pieceStr = std::string(pieces[pi].begin(), pieces[pi].end());
+        // std::cerr << "query: " << queryStr << ", piece: " << pieceStr << "\n";
+
+        if (strcmp(queryStr.c_str(), pieceStr.c_str()) != 0) {
+            matches = false;
         }
     }
 
-    const ModuleInfo* info = exprs.find(&pathExpr);
-    if (!info)
-        return std::nullopt;
+    if (matches) {
+        return ModuleInfo{name};
+    }
 
-    return *info;
+    return std::nullopt;
+}
+
+std::optional<ModuleInfo> FrontendModuleResolver::getMatchFromString(const std::string str) {
+    std::vector<std::string_view> query = split(str, '/');
+
+    // open modules
+    // for (auto [name, module] : modules) {
+    //     if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
+    //         return moduleInfo;
+    //     }
+    // }
+
+    // all known modules
+    for (auto [name, module] : frontend->sourceModules) {
+        if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
+            return moduleInfo;
+        }
+    }
+
+    return std::nullopt;
+}
+
+std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const AstExprConstantString*stringKey) {
+    std::string str = std::string(stringKey->value.data, stringKey->value.size);
+    return getMatchFromString(str);
+    //  std::vector<std::string_view> query = split(str, '/');
+
+    // // open modules
+    // // for (auto [name, module] : modules) {
+    // //     if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
+    // //         return moduleInfo;
+    // //     }
+    // // }
+
+    // // all known modules
+    // for (auto [name, module] : frontend->sourceModules) {
+    //     if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
+    //         return moduleInfo;
+    //     }
+    // }
+
+    // return std::nullopt;
+}
+
+std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const std::string stringKey) {
+    return getMatchFromString(stringKey);
+}
+
+std::optional<ModuleInfo> FrontendModuleResolver::resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr)
+{
+    // std::cerr << "--------------------------------" << "\n";
+    // FIXME I think this can be pushed into the FileResolver.
+    auto it = frontend->requireTrace.find(currentModuleName);
+    
+    // std::cerr << "source modules: " << frontend->sourceModules.size() << "\n";
+    // std::cerr << "modules: " << modules.size() << "\n";
+
+    const AstExprCall* call = pathExpr.as<AstExprCall>();
+    if (call) {
+        auto stringKey = call->args.data[0]->as<AstExprConstantString>();
+        // std::cerr << "got string 1" << "\n";
+        if (stringKey; auto match = getMatch(stringKey)) {
+            std::cerr << "match 1" << "\n";
+            return match;
+        }
+    } else {
+        auto stringKey = pathExpr.as<AstExprConstantString>();
+        // std::cerr << "got string 2" << "\n";
+        if (stringKey; auto match = getMatch(stringKey)) {
+            std::cerr << "match 2" << "\n";
+            return match;
+        }
+    }
+
+    std::cerr << "didnt match" << "\n";
+
+    // this block causes the extension to crash in the kingship project (figure out later)
+    if (it != frontend->requireTrace.end()) {
+        const auto& exprs = it->second.exprs;
+        const ModuleInfo* info = exprs.find(&pathExpr);
+        if (!info)
+            return std::nullopt;
+
+        std::cerr << "normal found module: " << info->name << "\n";
+        return *info;
+    }
+
+    return std::nullopt;
 }
 
 const ModulePtr FrontendModuleResolver::getModule(const ModuleName& moduleName) const
@@ -1512,6 +1680,19 @@ const ModulePtr FrontendModuleResolver::getModule(const ModuleName& moduleName) 
         return it->second;
     else
         return nullptr;
+}
+
+// source modules are known even if they aren't open
+const std::shared_ptr<SourceModule> FrontendModuleResolver::getSourceModule(const ModuleName& moduleName) const
+{
+    std::scoped_lock lock(moduleMutex);
+
+    auto it = frontend->sourceModules.find(moduleName);
+    if (it != frontend->sourceModules.end())
+        return it->second;
+    else
+    
+    return nullptr;
 }
 
 bool FrontendModuleResolver::moduleExists(const ModuleName& moduleName) const

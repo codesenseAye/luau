@@ -247,6 +247,7 @@ public:
 
     ScopePtr childFunctionScope(const ScopePtr& parent, const Location& location, int subLevel = 0);
     ScopePtr childScope(const ScopePtr& parent, const Location& location);
+    std::vector<std::string> workspaceFolders;
 
     // Wrapper for merge(l, r, toUnion) but without the lambda junk.
     void merge(RefinementMap& l, const RefinementMap& r);

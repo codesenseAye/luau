@@ -22,6 +22,12 @@
 #include "Luau/TypeUtils.h"
 #include "Luau/VisitType.h"
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <iostream>
+#endif
+
 #include <algorithm>
 #include <iterator>
 
@@ -4694,10 +4700,39 @@ TypeId TypeChecker::checkRequire(const ScopePtr& scope, const ModuleInfo& module
         // There are two reasons why we might fail to find the module:
         // either the file does not exist or there's a cycle. If there's a cycle
         // we will already have reported the error.
-        if (!resolver->moduleExists(moduleInfo.name) && !moduleInfo.optional)
-            reportError(TypeError{location, UnknownRequire{resolver->getHumanReadableModuleName(moduleInfo.name)}});
 
+        // !! this plays a part in the autocomplete
+
+        bool exists = resolver->moduleExists(moduleInfo.name);
+
+        if (!exists && !moduleInfo.optional) {
+            // std::cerr << resolver->moduleExists(moduleInfo.name) << "\n";
+            reportError(TypeError{location, UnknownRequire{resolver->getHumanReadableModuleName(moduleInfo.name) + " ...idk..."}});
+        } else if (exists) {
+            std::shared_ptr<SourceModule> sourceModule = resolver->getSourceModule(moduleInfo.name);
+
+            if (!sourceModule) {
+                std::cerr << "no source module: " << moduleInfo.name << "\n";
+                return errorRecoveryType(scope);
+            }
+
+            // load the module
+            // check(*sourceModule, Mode::Nonstrict);
+            
+            // workspaceFolders.checkStrict();
+
+
+            module = resolver->getModule(moduleInfo.name);
+
+            if (!module) {
+                std::cerr << "still no module: " << moduleInfo.name << "\n";
+            }
+        }
+
+        // std::cerr << "doesn't exist: " << moduleInfo.name << "\n";
         return errorRecoveryType(scope);
+    } else {
+        // std::cerr << "found module: " << moduleInfo.name << "\n";
     }
 
     if (module->type != SourceCode::Module)

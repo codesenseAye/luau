@@ -4,6 +4,12 @@
 #include "Luau/Ast.h"
 #include "Luau/Module.h"
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <iostream>
+#endif
+
 namespace Luau
 {
 
@@ -134,6 +140,12 @@ struct RequireTracer : AstVisitor
 
             if (const ModuleInfo* info = result.exprs.find(arg))
             {
+                auto stringKey = arg->as<AstExprConstantString>();
+                std::string str = std::string(stringKey->value.data, stringKey->value.size);
+
+                std::cerr << "found info with require: " << info->name << "\n";
+                // TODO this info needs to be the correct one
+
                 result.requireList.push_back({info->name, require->location});
 
                 ModuleInfo infoCopy = *info; // copy *info out since next line invalidates info!

@@ -45,6 +45,12 @@ const ModulePtr TestFileResolver::getModule(const ModuleName& moduleName) const
     return nullptr;
 }
 
+const std::shared_ptr<SourceModule> TestFileResolver::getSourceModule(const ModuleName& moduleName) const
+{
+    LUAU_ASSERT(false);
+    return nullptr;
+}
+
 bool TestFileResolver::moduleExists(const ModuleName& moduleName) const
 {
     auto it = source.find(moduleName);

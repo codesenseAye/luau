@@ -1170,15 +1170,13 @@ static std::optional<WithPredicate<TypePackId>> magicFunctionShared(
 
     if (expr.args.size != 1)
     {
-        typechecker.reportError(TypeError{expr.location, GenericError{"require takes 1 argument"}});
+        typechecker.reportError(TypeError{expr.location, GenericError{"shared takes 1 argument"}});
         return std::nullopt;
     }
 
     if (!checkRequirePath(typechecker, expr.args.data[0]))
         return std::nullopt;
-
-    std::cerr << "resolved" << "\n";
-    std::cerr << typechecker.currentModule->name.c_str() << "\n";
+    
     if (auto moduleInfo = typechecker.resolver->resolveModuleInfo(typechecker.currentModule->name, expr))
         return WithPredicate<TypePackId>{arena.addTypePack({typechecker.checkRequire(scope, *moduleInfo, expr.location)})};
 

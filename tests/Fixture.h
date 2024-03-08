@@ -34,6 +34,7 @@ struct TestFileResolver
     std::optional<ModuleInfo> resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr) override;
 
     const ModulePtr getModule(const ModuleName& moduleName) const override;
+    const std::shared_ptr<SourceModule> getSourceModule(const ModuleName& moduleName) const override;
 
     bool moduleExists(const ModuleName& moduleName) const override;
 
