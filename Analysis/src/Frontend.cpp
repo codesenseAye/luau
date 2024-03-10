@@ -174,13 +174,18 @@ LoadDefinitionFileResult Frontend::loadDefinitionFile(GlobalTypes& globals, Scop
     sourceModule.humanReadableName = packageName;
 
     Luau::ParseResult parseResult = parseSourceForModule(source, sourceModule, captureComments);
-    if (parseResult.errors.size() > 0)
+    if (parseResult.errors.size() > 0) {
+        std::cerr << "check1" << "\n";
         return LoadDefinitionFileResult{false, parseResult, sourceModule, nullptr};
+    }
 
     ModulePtr checkedModule = check(sourceModule, Mode::Definition, {}, std::nullopt, /*forAutocomplete*/ false, /*recordJsonLog*/ false, {});
 
-    if (checkedModule->errors.size() > 0)
+    if (checkedModule->errors.size() > 0) {
+        std::cerr << "check2" << "\n";
+        std::cerr << "error: " << checkedModule->errors.begin()->location.begin.line << "\n";
         return LoadDefinitionFileResult{false, parseResult, sourceModule, checkedModule};
+    }
 
     persistCheckedTypes(checkedModule, globals, targetScope, packageName);
 
