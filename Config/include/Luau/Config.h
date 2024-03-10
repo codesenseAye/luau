@@ -41,7 +41,6 @@ struct ConfigResolver
     virtual ~ConfigResolver() {}
 
     virtual const Config& getConfig(const ModuleName& name) const = 0;
-    // std::unordered_map<std::string, std::string> sourceModuleMap{};
 };
 
 struct NullConfigResolver : ConfigResolver
