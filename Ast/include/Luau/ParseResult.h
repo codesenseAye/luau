@@ -45,6 +45,7 @@ private:
 struct HotComment
 {
     bool header;
+    bool at;
     Location location;
     std::string content;
 };

@@ -4704,7 +4704,7 @@ TypeId TypeChecker::checkRequire(const ScopePtr& scope, const ModuleInfo& module
         bool exists = resolver->moduleExists(moduleInfo.name);
 
         if (!exists && !moduleInfo.optional) {
-            reportError(TypeError{location, UnknownRequire{resolver->getHumanReadableModuleName(moduleInfo.name) + " ...idk..."}});
+            reportError(TypeError{location, UnknownRequire{resolver->getHumanReadableModuleName(moduleInfo.name)}});
         }
 
         return errorRecoveryType(scope);

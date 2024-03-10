@@ -2846,7 +2846,7 @@ static void lintComments(LintContext& context, const std::vector<HotComment>& ho
 
         if (!hc.header)
         {
-            if (hc.content[0] == '@') {
+            if (hc.content[0] == '@' || (hc.at && hc.content[0] == 'm')) {
                 continue;
             }
 

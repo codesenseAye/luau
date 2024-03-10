@@ -9,6 +9,12 @@
 #include <errno.h>
 #include <limits.h>
 
+#ifdef _WIN32
+#include <io.h>
+#include <fcntl.h>
+#include <iostream>
+#endif
+
 LUAU_FASTINTVARIABLE(LuauRecursionLimit, 1000)
 LUAU_FASTINTVARIABLE(LuauTypeLengthLimit, 1000)
 LUAU_FASTINTVARIABLE(LuauParseErrorLimit, 100)
@@ -3144,7 +3150,7 @@ void Parser::nextLexeme()
             return;
 
         // Comments starting with ! are called "hot comments" and contain directives for type checking / linting / compiling
-        if (lexeme.type == Lexeme::Comment && lexeme.length && (lexeme.data[0] == '!' || (lexeme.data[0] == '-' && lexeme.data[1] == '@')))
+        if ((lexeme.type == Lexeme::Comment || lexeme.type == Lexeme::BlockComment) && lexeme.length && (lexeme.data[0] == '!' || (lexeme.data[0] == '-' && lexeme.data[1] == '@') || (lexeme.data[0] == '@' && lexeme.data[1] == 'm')))
         {
             const char* text = lexeme.data;
 
@@ -3152,7 +3158,8 @@ void Parser::nextLexeme()
             while (end > 0 && isSpace(text[end - 1]))
                 --end;
 
-            hotcomments.push_back({hotcommentHeader, lexeme.location, std::string(text + 1, text + end)});
+            bool at = lexeme.type == Lexeme::BlockComment;
+            hotcomments.push_back({hotcommentHeader, at, lexeme.location, std::string(text + 1, text + end)});
         }
 
         type = lexer.next(/* skipComments= */ false, /* updatePrevLocation= */ false).type;
