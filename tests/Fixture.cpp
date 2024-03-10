@@ -72,7 +72,7 @@ std::optional<SourceCode> TestFileResolver::readSource(const ModuleName& name)
     return SourceCode{it->second, sourceType};
 }
 
-std::optional<ModuleInfo> TestFileResolver::resolveModule(const ModuleInfo* context, AstExpr* expr)
+std::optional<ModuleInfo> TestFileResolver::resolveModule(const ModuleInfo* context, AstExpr* expr, Luau::SourceModule*src)
 {
     if (AstExprGlobal* g = expr->as<AstExprGlobal>())
     {

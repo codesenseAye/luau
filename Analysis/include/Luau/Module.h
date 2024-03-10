@@ -55,6 +55,7 @@ struct SourceModule
 
 bool isWithinComment(const SourceModule& sourceModule, Position pos);
 bool isWithinComment(const ParseResult& result, Position pos);
+std::optional<Luau::HotComment> getHotComment(const SourceModule& sourceModule, Position pos);
 
 struct RequireCycle
 {

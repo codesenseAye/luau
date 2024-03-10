@@ -3144,7 +3144,7 @@ void Parser::nextLexeme()
             return;
 
         // Comments starting with ! are called "hot comments" and contain directives for type checking / linting / compiling
-        if (lexeme.type == Lexeme::Comment && lexeme.length && lexeme.data[0] == '!')
+        if (lexeme.type == Lexeme::Comment && lexeme.length && (lexeme.data[0] == '!' || (lexeme.data[0] == '-' && lexeme.data[1] == '@')))
         {
             const char* text = lexeme.data;
 

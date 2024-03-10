@@ -1062,13 +1062,11 @@ void Frontend::recordItemResult(const BuildQueueItem& item)
 
     if (item.options.forAutocomplete)
     {
-        std::cerr << "add module for autocomplete: " << item.name.c_str() << "\n";
         moduleResolverForAutocomplete.setModule(item.name, item.module);
         item.sourceNode->dirtyModuleForAutocomplete = false;
     }
     else
     {
-        std::cerr << "add module regular: " << item.name.c_str() << "\n";
         moduleResolver.setModule(item.name, item.module);
         item.sourceNode->dirtyModule = false;
     }
@@ -1180,7 +1178,6 @@ ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<R
     const ScopePtr& parentScope, std::function<void(const ModuleName&, const ScopePtr&)> prepareModuleScope, FrontendOptions options,
     TypeCheckLimits limits, std::function<void(const ModuleName&, std::string)> writeJsonLog)
 {
-    // std::cerr << "CHECK MODULE 2: " << sourceModule.name << "\n";
     const bool recordJsonLog = FFlag::DebugLuauLogSolverToJson;
     return check(sourceModule, mode, requireCycles, builtinTypes, iceHandler, moduleResolver, fileResolver, parentScope,
         std::move(prepareModuleScope), options, limits, recordJsonLog, writeJsonLog);
@@ -1191,7 +1188,6 @@ ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<R
     const ScopePtr& parentScope, std::function<void(const ModuleName&, const ScopePtr&)> prepareModuleScope, FrontendOptions options,
     TypeCheckLimits limits, bool recordJsonLog, std::function<void(const ModuleName&, std::string)> writeJsonLog)
 {
-    std::cerr << "CHECK MODULE 1: " << sourceModule.name << "\n";
     ModulePtr result = std::make_shared<Module>();
     result->name = sourceModule.name;
     result->humanReadableName = sourceModule.humanReadableName;
@@ -1306,8 +1302,6 @@ ModulePtr check(const SourceModule& sourceModule, Mode mode, const std::vector<R
 ModulePtr Frontend::check(const SourceModule& sourceModule, Mode mode, std::vector<RequireCycle> requireCycles,
     std::optional<ScopePtr> environmentScope, bool forAutocomplete, bool recordJsonLog, TypeCheckLimits typeCheckLimits)
 {
-    std::cerr << "CHECK MODULE 3: " << sourceModule.name << "\n";
-
     if (FFlag::DebugLuauDeferredConstraintResolution)
     {
         auto prepareModuleScopeWrap = [this, forAutocomplete](const ModuleName& name, const ScopePtr& scope) {
@@ -1399,8 +1393,9 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
     // maybe there is another area with the same variable that could fix  this
     // eventually you need to figure out why that variable did that and implement a proper solution
 
+    std::cerr << "get source node: " << name << "\n";
+
     RequireTraceResult& require = requireTrace[name];
-    require = traceRequires(fileResolver, result.root, name);
 
     std::shared_ptr<SourceNode>& sourceNode = sourceNodes[name];
 
@@ -1415,6 +1410,8 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
     *sourceModule = std::move(result);
     sourceModule->environmentName = environmentName;
 
+    require = traceRequires(fileResolver, &*sourceModule, result.root, name);
+
     sourceNode->name = sourceModule->name;
     sourceNode->humanReadableName = sourceModule->humanReadableName;
     sourceNode->requireSet.clear();
@@ -1427,29 +1424,32 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
         sourceNode->dirtyModuleForAutocomplete = true;
     }
 
+
     for (auto& [moduleName, location] : require.requireList) {
-        
-        std::cerr << "TRANSFORM module name: " << moduleName.c_str() << "\n";
-        std::optional<std::string> root = moduleResolver.getRoot();
-        
-        if (!root) {
-            sourceNode->requireSet.insert(moduleName);
-            continue;
-        }
-        
-        root = root->c_str();
+        // std::optional<Luau::HotComment> comment = getHotComment(*sourceModule, location.begin);
 
-        auto shortenName = moduleName.substr(moduleName.find_first_of(root.value()) + root->length());
-        shortenName = shortenName.substr(0, shortenName.find_last_of("."));
+        // try
+        // {
+        //     std::optional<std::string> root = moduleResolver.getRoot();
+            
+        //     if (root.has_value()) {
+        //         root = root->c_str();
 
-        std::cerr << shortenName.c_str() << "\n";
+        //         auto shortenName = moduleName.substr(moduleName.find_first_of(root.value()) + root->length());
+        //         shortenName = shortenName.substr(0, shortenName.find_last_of("."));
 
-        std::optional<ModuleInfo> newInfo = moduleResolver.getMatch(shortenName);
-        
-        if (newInfo) {
-            std::cerr << "TRANSFORMED to module name: " << newInfo->name.c_str() << "\n";
-            moduleName = newInfo->name;
-        }
+        //         std::optional<ModuleInfo> newInfo = moduleResolver.getMatch(shortenName);
+                
+        //         if (newInfo) {
+        //             std::cerr << "new module name: " << newInfo->name << " , old: " << moduleName << "\n";   
+        //             replacementName = newInfo->name; // something about this makes it error whenever i type
+        //         }
+        //     }
+        // }
+        // catch(const std::exception& e)
+        // {
+        //     std::cerr << "ERROR! 2 message: " << e.what() << '\n';
+        // }
 
         sourceNode->requireSet.insert(moduleName);
     }
@@ -1528,40 +1528,12 @@ std::optional<std::string> FrontendModuleResolver::getRoot() {
 };
 
 
-std::optional<ModuleInfo> FrontendModuleResolver::getSpecificModuleMatch(const ModuleName &name, std::vector<std::string_view> query) {
-    if (frontend->source.workspaceFolders.size() < 1) {
-        return std::nullopt;
-    }
-    
-    std::string root = frontend->source.workspaceFolders.begin()->c_str();
-    auto shortenName = name.substr(name.find_first_of(root) + root.length());
-    shortenName = shortenName.substr(0, shortenName.find_last_of("."));
-
-    std::vector<std::string_view> pieces = split(shortenName, '/');
-    
+bool FrontendModuleResolver::matchQueryToPieces(std::vector<std::string_view> query, unsigned int queryNum, std::vector<std::string_view> pieces, unsigned int piecesNum) {
     bool matches = true;
-    unsigned int piecesNum = 0;
-    unsigned int queryNum = 0;
-    
-    for(unsigned i : indices(pieces)) {
-        piecesNum += 1;
-    }
-    
-    for(unsigned i : indices(query)) {
-        queryNum += 1;
-    }
 
-    // std::cerr << "name: " << name.c_str() << "\n";
-    // std::cerr << "name: " << shortenName << "\n";
-    // std::cerr << "pieces num: " << piecesNum << "\n";
-    // std::cerr << "query num: " << queryNum << "\n";
-    
     for(unsigned i : indices(query)) {
-        // std::cerr << "before index: " << i << "\n";
         unsigned qi = (queryNum - 1) - i;
         unsigned pi = (piecesNum - 1) - i;
-        // std::cerr << "q index: " << qi << "\n";
-        // std::cerr << "p index: " << pi << "\n";
         
         if (i >= piecesNum) {
             continue;
@@ -1569,15 +1541,54 @@ std::optional<ModuleInfo> FrontendModuleResolver::getSpecificModuleMatch(const M
 
         std::string queryStr = {query[qi].begin(), query[qi].end()};
         std::string pieceStr = std::string(pieces[pi].begin(), pieces[pi].end());
-        // std::cerr << "query: " << queryStr << ", piece: " << pieceStr << "\n";
 
         if (strcmp(queryStr.c_str(), pieceStr.c_str()) != 0) {
             matches = false;
         }
     }
 
-    if (matches) {
-        return ModuleInfo{name};
+    return matches;
+}
+
+
+std::optional<ModuleInfo> FrontendModuleResolver::getSpecificModuleMatch(const ModuleName &name, std::vector<std::string_view> query, unsigned int queryNum) {
+    if (frontend->source.workspaceFolders.size() < 1) {
+        return std::nullopt;
+    }
+    
+    try
+    {
+        std::string root = frontend->source.workspaceFolders.begin()->c_str();
+        auto shortenName = name.substr(name.find_first_of(root) + root.length());
+        shortenName = shortenName.substr(0, shortenName.find_last_of("."));
+
+        std::vector<std::string_view> pieces = split(shortenName, '/');
+        
+        unsigned int piecesNum = 0;
+
+        for(unsigned i : indices(pieces)) {
+            piecesNum += 1;
+        }
+
+        bool matches = matchQueryToPieces(query, queryNum, pieces, piecesNum);
+
+        // try attaching /init only if the modulename has init in it
+        if (!matches && pieces.back() == "init") {
+            unsigned int queryNumCopy = queryNum + 1;
+
+            std::vector<std::string_view> queryCopy(query);
+            queryCopy.emplace_back("init");
+
+            matches = matchQueryToPieces(queryCopy, queryNumCopy, pieces, piecesNum);
+        }
+
+        if (matches) {
+            return ModuleInfo{name};
+        }
+    }
+    catch(const std::exception& e)
+    {
+        std::cerr << "ERROR! 1 message: " << e.what() << '\n';
     }
 
     return std::nullopt;
@@ -1585,17 +1596,15 @@ std::optional<ModuleInfo> FrontendModuleResolver::getSpecificModuleMatch(const M
 
 std::optional<ModuleInfo> FrontendModuleResolver::getMatchFromString(const std::string str) {
     std::vector<std::string_view> query = split(str, '/');
+    unsigned int queryNum = 0;
 
-    // open modules
-    // for (auto [name, module] : modules) {
-    //     if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
-    //         return moduleInfo;
-    //     }
-    // }
+    for(unsigned i : indices(query)) {
+        queryNum += 1;
+    }
 
     // all known modules
     for (auto [name, module] : frontend->sourceModules) {
-        if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
+        if (auto moduleInfo = getSpecificModuleMatch(name, query, queryNum)) {
             return moduleInfo;
         }
     }
@@ -1606,23 +1615,6 @@ std::optional<ModuleInfo> FrontendModuleResolver::getMatchFromString(const std::
 std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const AstExprConstantString*stringKey) {
     std::string str = std::string(stringKey->value.data, stringKey->value.size);
     return getMatchFromString(str);
-    //  std::vector<std::string_view> query = split(str, '/');
-
-    // // open modules
-    // // for (auto [name, module] : modules) {
-    // //     if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
-    // //         return moduleInfo;
-    // //     }
-    // // }
-
-    // // all known modules
-    // for (auto [name, module] : frontend->sourceModules) {
-    //     if (auto moduleInfo = getSpecificModuleMatch(name, query)) {
-    //         return moduleInfo;
-    //     }
-    // }
-
-    // return std::nullopt;
 }
 
 std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const std::string stringKey) {
@@ -1631,31 +1623,36 @@ std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const std::string str
 
 std::optional<ModuleInfo> FrontendModuleResolver::resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr)
 {
-    // std::cerr << "--------------------------------" << "\n";
-    // FIXME I think this can be pushed into the FileResolver.
     auto it = frontend->requireTrace.find(currentModuleName);
-    
-    // std::cerr << "source modules: " << frontend->sourceModules.size() << "\n";
-    // std::cerr << "modules: " << modules.size() << "\n";
+    // std::optional<Luau::HotComment> comment = getHotComment(*getSourceModule(currentModuleName), pathExpr.location.begin);
 
-    const AstExprCall* call = pathExpr.as<AstExprCall>();
-    if (call) {
-        auto stringKey = call->args.data[0]->as<AstExprConstantString>();
-        // std::cerr << "got string 1" << "\n";
-        if (stringKey; auto match = getMatch(stringKey)) {
-            std::cerr << "match 1" << "\n";
-            return match;
-        }
-    } else {
-        auto stringKey = pathExpr.as<AstExprConstantString>();
-        // std::cerr << "got string 2" << "\n";
-        if (stringKey; auto match = getMatch(stringKey)) {
-            std::cerr << "match 2" << "\n";
-            return match;
-        }
-    }
+    // if (frontend->source.workspaceFolders.size() > 0 && comment) {
+    //     std::string root = frontend->source.workspaceFolders.begin()->c_str();
+    //     std::string content(comment.value().content);
+    //     std::string find = "@module ";
+    //     int location = content.find_first_of(find);
 
-    std::cerr << "didnt match" << "\n";
+    //     if (location == 0) {
+    //         std::string body = content.substr(find.size());
+    //         int end = body.find_last_of(".");
+    //         body = root + "/" + body;//.substr(0, end - 1);
+    //         std::cerr << "resolve module info body: " << body << "\n";
+    //         return ModuleInfo{body};
+    //     }
+    // }
+
+    // const AstExprCall* call = pathExpr.as<AstExprCall>();
+    // if (call) {
+    //     auto stringKey = call->args.data[0]->as<AstExprConstantString>();
+    //     if (stringKey; auto match = getMatch(stringKey)) {
+    //         return match;
+    //     }
+    // } else {
+    //     auto stringKey = pathExpr.as<AstExprConstantString>();
+    //     if (stringKey; auto match = getMatch(stringKey)) {
+    //         return match;
+    //     }
+    // }
 
     // this block causes the extension to crash in the kingship project (figure out later)
     if (it != frontend->requireTrace.end()) {
@@ -1664,7 +1661,6 @@ std::optional<ModuleInfo> FrontendModuleResolver::resolveModuleInfo(const Module
         if (!info)
             return std::nullopt;
 
-        std::cerr << "normal found module: " << info->name << "\n";
         return *info;
     }
 

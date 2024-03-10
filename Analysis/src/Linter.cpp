@@ -12,6 +12,13 @@
 #include <math.h>
 #include <limits.h>
 
+
+#ifdef _WIN32
+#include <io.h>
+#include <iostream>
+#endif
+
+
 LUAU_FASTINTVARIABLE(LuauSuggestionDistance, 4)
 
 LUAU_FASTFLAG(DebugLuauDeferredConstraintResolution)
@@ -2839,6 +2846,10 @@ static void lintComments(LintContext& context, const std::vector<HotComment>& ho
 
         if (!hc.header)
         {
+            if (hc.content[0] == '@') {
+                continue;
+            }
+
             emitWarning(context, LintWarning::Code_CommentDirective, hc.location,
                 "Comment directive is ignored because it is placed after the first non-comment token");
         }

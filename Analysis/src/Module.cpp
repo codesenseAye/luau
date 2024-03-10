@@ -12,6 +12,11 @@
 #include "Luau/TypePack.h"
 #include "Luau/VisitType.h"
 
+#ifdef _WIN32
+#include <io.h>
+#include <iostream>
+#endif
+
 #include <algorithm>
 
 LUAU_FASTFLAG(DebugLuauDeferredConstraintResolution);
@@ -27,6 +32,14 @@ static bool contains(Position pos, Comment comment)
              comment.location.begin <= pos) // Broken comments are broken specifically because they don't have an end
         return true;
     else if (comment.type == Lexeme::Comment && comment.location.end == pos)
+        return true;
+    else
+        return false;
+}
+
+static bool contains(Position pos, HotComment comment)
+{
+    if (comment.location.contains(pos))
         return true;
     else
         return false;
@@ -62,6 +75,18 @@ bool isWithinComment(const SourceModule& sourceModule, Position pos)
 bool isWithinComment(const ParseResult& result, Position pos)
 {
     return isWithinComment(result.commentLocations, pos);
+}
+
+std::optional<Luau::HotComment> getHotComment(const SourceModule& sourceModule, Position pos) {
+    if (sourceModule.hotcomments.size() > 0) {
+        for (auto comment : sourceModule.hotcomments) {
+            if (comment.location.end.line == pos.line && comment.location.begin.line == pos.line) {
+                return comment;
+            }
+        }
+    }
+
+    return std::nullopt;
 }
 
 struct ClonePublicInterface : Substitution

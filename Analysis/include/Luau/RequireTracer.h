@@ -15,6 +15,7 @@ class AstStat;
 class AstExpr;
 class AstStatBlock;
 struct AstLocal;
+struct SourceModule;
 
 struct RequireTraceResult
 {
@@ -23,6 +24,7 @@ struct RequireTraceResult
     std::vector<std::pair<ModuleName, Location>> requireList;
 };
 
+RequireTraceResult traceRequires(FileResolver* fileResolver, SourceModule *sourceModule, AstStatBlock* root, const ModuleName& currentModuleName);
 RequireTraceResult traceRequires(FileResolver* fileResolver, AstStatBlock* root, const ModuleName& currentModuleName);
 
 } // namespace Luau

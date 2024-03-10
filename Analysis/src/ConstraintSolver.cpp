@@ -2417,6 +2417,7 @@ NotNull<Constraint> ConstraintSolver::pushConstraint(NotNull<Scope> scope, const
 
 TypeId ConstraintSolver::resolveModule(const ModuleInfo& info, const Location& location)
 {
+    std::cerr << "TEST RESOLVE MODULE -1" << "\n";
     if (info.name.empty())
     {
         reportError(UnknownRequire{}, location);

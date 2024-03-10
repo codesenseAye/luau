@@ -29,6 +29,11 @@ struct NaiveModuleResolver : ModuleResolver
         return std::nullopt;
     }
 
+    const std::shared_ptr<SourceModule> getSourceModule(const ModuleName& moduleName) const override
+    {
+        return nullptr;
+    }
+
     const ModulePtr getModule(const ModuleName& moduleName) const override
     {
         return nullptr;
@@ -49,7 +54,7 @@ NaiveModuleResolver naiveModuleResolver;
 
 struct NaiveFileResolver : NullFileResolver
 {
-    std::optional<ModuleInfo> resolveModule(const ModuleInfo* context, AstExpr* expr) override
+    std::optional<ModuleInfo> resolveModule(const ModuleInfo* context, AstExpr* expr, Luau::SourceModule *src = nullptr) override
     {
         if (AstExprGlobal* g = expr->as<AstExprGlobal>())
         {

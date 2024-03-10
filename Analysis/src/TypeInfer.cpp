@@ -4706,33 +4706,10 @@ TypeId TypeChecker::checkRequire(const ScopePtr& scope, const ModuleInfo& module
         bool exists = resolver->moduleExists(moduleInfo.name);
 
         if (!exists && !moduleInfo.optional) {
-            // std::cerr << resolver->moduleExists(moduleInfo.name) << "\n";
             reportError(TypeError{location, UnknownRequire{resolver->getHumanReadableModuleName(moduleInfo.name) + " ...idk..."}});
-        } else if (exists) {
-            std::shared_ptr<SourceModule> sourceModule = resolver->getSourceModule(moduleInfo.name);
-
-            if (!sourceModule) {
-                std::cerr << "no source module: " << moduleInfo.name << "\n";
-                return errorRecoveryType(scope);
-            }
-
-            // load the module
-            // check(*sourceModule, Mode::Nonstrict);
-            
-            // workspaceFolders.checkStrict();
-
-
-            module = resolver->getModule(moduleInfo.name);
-
-            if (!module) {
-                std::cerr << "still no module: " << moduleInfo.name << "\n";
-            }
         }
 
-        // std::cerr << "doesn't exist: " << moduleInfo.name << "\n";
         return errorRecoveryType(scope);
-    } else {
-        // std::cerr << "found module: " << moduleInfo.name << "\n";
     }
 
     if (module->type != SourceCode::Module)

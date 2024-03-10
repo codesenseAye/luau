@@ -26,6 +26,7 @@ namespace Luau
 {
 
 struct TypeChecker;
+struct SourceModule;
 
 struct TestFileResolver
     : FileResolver
@@ -40,7 +41,7 @@ struct TestFileResolver
 
     std::optional<SourceCode> readSource(const ModuleName& name) override;
 
-    std::optional<ModuleInfo> resolveModule(const ModuleInfo* context, AstExpr* expr) override;
+    std::optional<ModuleInfo> resolveModule(const ModuleInfo* context, AstExpr* expr, SourceModule *sourceModule = nullptr) override;
 
     std::string getHumanReadableModuleName(const ModuleName& name) const override;
 

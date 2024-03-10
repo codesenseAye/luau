@@ -30,6 +30,8 @@
 LUAU_FASTFLAG(DebugLuauTimeTracing)
 LUAU_FASTFLAG(DebugLuauLogSolverToJsonFile)
 
+struct SourceModule;
+
 enum class ReportFormat
 {
     Default,
@@ -166,8 +168,9 @@ struct CliFileResolver : Luau::FileResolver
         return Luau::SourceCode{*source, sourceType};
     }
 
-    std::optional<Luau::ModuleInfo> resolveModule(const Luau::ModuleInfo* context, Luau::AstExpr* node) override
+    std::optional<Luau::ModuleInfo> resolveModule(const Luau::ModuleInfo* context, Luau::AstExpr* node, Luau::SourceModule *src = nullptr) override
     {
+        std::cerr << "TEST RESOLVE MODULE -2" << "\n";
         if (Luau::AstExprConstantString* expr = node->as<Luau::AstExprConstantString>())
         {
             Luau::ModuleName name = std::string(expr->value.data, expr->value.size) + ".luau";

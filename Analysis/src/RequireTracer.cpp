@@ -15,6 +15,14 @@ namespace Luau
 
 struct RequireTracer : AstVisitor
 {
+    RequireTracer(RequireTraceResult& result, FileResolver* fileResolver, SourceModule *sourceModule, const ModuleName& currentModuleName)
+        : result(result)
+        , fileResolver(fileResolver)
+        , sourceModule(sourceModule)
+        , currentModuleName(currentModuleName)
+        , locals(nullptr)
+    {
+    }
     RequireTracer(RequireTraceResult& result, FileResolver* fileResolver, const ModuleName& currentModuleName)
         : result(result)
         , fileResolver(fileResolver)
@@ -32,7 +40,8 @@ struct RequireTracer : AstVisitor
     bool visit(AstExprCall* expr) override
     {
         AstExprGlobal* global = expr->func->as<AstExprGlobal>();
-
+        std::cerr << "visit tracer" << "\n";
+        
         if (global && (global->name == "require" || global->name == "shared") && expr->args.size >= 1) {
             requireCalls.push_back(expr);
         }
@@ -88,6 +97,7 @@ struct RequireTracer : AstVisitor
 
     void process()
     {
+        std::cerr << "PROCESS!!!!" << "\n";
         ModuleInfo moduleContext{currentModuleName};
 
         // seed worklist with require arguments
@@ -117,14 +127,20 @@ struct RequireTracer : AstVisitor
                 const ModuleInfo* context = result.exprs.find(dep);
 
                 // locals just inherit their dependent context, no resolution required
-                if (expr->is<AstExprLocal>())
+                if (expr->is<AstExprLocal>()) {
+                    std::cerr << "solve 2" << "\n";
                     info = context ? std::optional<ModuleInfo>(*context) : std::nullopt;
-                else
-                    info = fileResolver->resolveModule(context, expr);
+                } else {
+                    std::cerr << "solve 1" << "\n";
+                    info = fileResolver->resolveModule(context, expr, sourceModule);                
+                    // info = fileResolver->resolveModule(context, expr);
+                }
             }
             else
             {
-                info = fileResolver->resolveModule(&moduleContext, expr);
+                std::cerr << "solve 3" << "\n";
+                info = fileResolver->resolveModule(&moduleContext, expr, sourceModule);                
+                // info = fileResolver->resolveModule(&moduleContext, expr, sourceModule);                
             }
 
             if (info)
@@ -140,12 +156,6 @@ struct RequireTracer : AstVisitor
 
             if (const ModuleInfo* info = result.exprs.find(arg))
             {
-                auto stringKey = arg->as<AstExprConstantString>();
-                std::string str = std::string(stringKey->value.data, stringKey->value.size);
-
-                std::cerr << "found info with require: " << info->name << "\n";
-                // TODO this info needs to be the correct one
-
                 result.requireList.push_back({info->name, require->location});
 
                 ModuleInfo infoCopy = *info; // copy *info out since next line invalidates info!
@@ -161,11 +171,21 @@ struct RequireTracer : AstVisitor
     RequireTraceResult& result;
     FileResolver* fileResolver;
     ModuleName currentModuleName;
+    SourceModule* sourceModule;
 
     DenseHashMap<AstLocal*, AstExpr*> locals;
     std::vector<AstExpr*> work;
     std::vector<AstExprCall*> requireCalls;
 };
+
+RequireTraceResult traceRequires(FileResolver* fileResolver, SourceModule* sourceModule, AstStatBlock* root, const ModuleName& currentModuleName)
+{
+    RequireTraceResult result;
+    RequireTracer tracer{result, fileResolver, sourceModule, currentModuleName};
+    root->visit(&tracer);
+    tracer.process();
+    return result;
+}
 
 RequireTraceResult traceRequires(FileResolver* fileResolver, AstStatBlock* root, const ModuleName& currentModuleName)
 {
