@@ -1575,6 +1575,13 @@ ControlFlow TypeChecker::check(const ScopePtr& scope, const AstStatTypeAlias& ty
         LUAU_ASSERT(generic);
         aliasScope->privateTypeBindings[generic->name] = TypeFun{{}, param.ty};
     }
+    
+    for (auto param : binding->typePackParams)
+    {
+        auto generic = get<GenericTypePack>(param.tp);
+        LUAU_ASSERT(generic);
+        aliasScope->privateTypePackBindings[generic->name] = param.tp;
+    }
 
     TypeId ty = resolveType(aliasScope, *typealias.type);
     if (auto ttv = getMutable<TableType>(follow(ty)))
