@@ -1393,7 +1393,7 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
     // maybe there is another area with the same variable that could fix  this
     // eventually you need to figure out why that variable did that and implement a proper solution
 
-    std::cerr << "get source node: " << name << "\n";
+    // std::cerr << "get source node: " << name << "\n";
 
     RequireTraceResult& require = requireTrace[name];
 
@@ -1426,31 +1426,6 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
 
 
     for (auto& [moduleName, location] : require.requireList) {
-        // std::optional<Luau::HotComment> comment = getHotComment(*sourceModule, location.begin);
-
-        // try
-        // {
-        //     std::optional<std::string> root = moduleResolver.getRoot();
-            
-        //     if (root.has_value()) {
-        //         root = root->c_str();
-
-        //         auto shortenName = moduleName.substr(moduleName.find_first_of(root.value()) + root->length());
-        //         shortenName = shortenName.substr(0, shortenName.find_last_of("."));
-
-        //         std::optional<ModuleInfo> newInfo = moduleResolver.getMatch(shortenName);
-                
-        //         if (newInfo) {
-        //             std::cerr << "new module name: " << newInfo->name << " , old: " << moduleName << "\n";   
-        //             replacementName = newInfo->name; // something about this makes it error whenever i type
-        //         }
-        //     }
-        // }
-        // catch(const std::exception& e)
-        // {
-        //     std::cerr << "ERROR! 2 message: " << e.what() << '\n';
-        // }
-
         sourceNode->requireSet.insert(moduleName);
     }
 
@@ -1527,134 +1502,10 @@ std::optional<std::string> FrontendModuleResolver::getRoot() {
     return *frontend->source.workspaceFolders.begin();
 };
 
-
-bool FrontendModuleResolver::matchQueryToPieces(std::vector<std::string_view> query, unsigned int queryNum, std::vector<std::string_view> pieces, unsigned int piecesNum) {
-    bool matches = true;
-
-    for(unsigned i : indices(query)) {
-        unsigned qi = (queryNum - 1) - i;
-        unsigned pi = (piecesNum - 1) - i;
-        
-        if (i >= piecesNum) {
-            continue;
-        }
-
-        std::string queryStr = {query[qi].begin(), query[qi].end()};
-        std::string pieceStr = std::string(pieces[pi].begin(), pieces[pi].end());
-
-        if (strcmp(queryStr.c_str(), pieceStr.c_str()) != 0) {
-            matches = false;
-        }
-    }
-
-    return matches;
-}
-
-
-std::optional<ModuleInfo> FrontendModuleResolver::getSpecificModuleMatch(const ModuleName &name, std::vector<std::string_view> query, unsigned int queryNum) {
-    if (frontend->source.workspaceFolders.size() < 1) {
-        return std::nullopt;
-    }
-    
-    try
-    {
-        std::string root = frontend->source.workspaceFolders.begin()->c_str();
-        auto shortenName = name.substr(name.find_first_of(root) + root.length());
-        shortenName = shortenName.substr(0, shortenName.find_last_of("."));
-
-        std::vector<std::string_view> pieces = split(shortenName, '/');
-        
-        unsigned int piecesNum = 0;
-
-        for(unsigned i : indices(pieces)) {
-            piecesNum += 1;
-        }
-
-        bool matches = matchQueryToPieces(query, queryNum, pieces, piecesNum);
-
-        // try attaching /init only if the modulename has init in it
-        if (!matches && pieces.back() == "init") {
-            unsigned int queryNumCopy = queryNum + 1;
-
-            std::vector<std::string_view> queryCopy(query);
-            queryCopy.emplace_back("init");
-
-            matches = matchQueryToPieces(queryCopy, queryNumCopy, pieces, piecesNum);
-        }
-
-        if (matches) {
-            return ModuleInfo{name};
-        }
-    }
-    catch(const std::exception& e)
-    {
-        std::cerr << "ERROR! 1 message: " << e.what() << '\n';
-    }
-
-    return std::nullopt;
-}
-
-std::optional<ModuleInfo> FrontendModuleResolver::getMatchFromString(const std::string str) {
-    std::vector<std::string_view> query = split(str, '/');
-    unsigned int queryNum = 0;
-
-    for(unsigned i : indices(query)) {
-        queryNum += 1;
-    }
-
-    // all known modules
-    for (auto [name, module] : frontend->sourceModules) {
-        if (auto moduleInfo = getSpecificModuleMatch(name, query, queryNum)) {
-            return moduleInfo;
-        }
-    }
-
-    return std::nullopt;
-}
-
-std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const AstExprConstantString*stringKey) {
-    std::string str = std::string(stringKey->value.data, stringKey->value.size);
-    return getMatchFromString(str);
-}
-
-std::optional<ModuleInfo> FrontendModuleResolver::getMatch(const std::string stringKey) {
-    return getMatchFromString(stringKey);
-}
-
 std::optional<ModuleInfo> FrontendModuleResolver::resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr)
 {
     auto it = frontend->requireTrace.find(currentModuleName);
-    // std::optional<Luau::HotComment> comment = getHotComment(*getSourceModule(currentModuleName), pathExpr.location.begin);
 
-    // if (frontend->source.workspaceFolders.size() > 0 && comment) {
-    //     std::string root = frontend->source.workspaceFolders.begin()->c_str();
-    //     std::string content(comment.value().content);
-    //     std::string find = "@module ";
-    //     int location = content.find_first_of(find);
-
-    //     if (location == 0) {
-    //         std::string body = content.substr(find.size());
-    //         int end = body.find_last_of(".");
-    //         body = root + "/" + body;//.substr(0, end - 1);
-    //         std::cerr << "resolve module info body: " << body << "\n";
-    //         return ModuleInfo{body};
-    //     }
-    // }
-
-    // const AstExprCall* call = pathExpr.as<AstExprCall>();
-    // if (call) {
-    //     auto stringKey = call->args.data[0]->as<AstExprConstantString>();
-    //     if (stringKey; auto match = getMatch(stringKey)) {
-    //         return match;
-    //     }
-    // } else {
-    //     auto stringKey = pathExpr.as<AstExprConstantString>();
-    //     if (stringKey; auto match = getMatch(stringKey)) {
-    //         return match;
-    //     }
-    // }
-
-    // this block causes the extension to crash in the kingship project (figure out later)
     if (it != frontend->requireTrace.end()) {
         const auto& exprs = it->second.exprs;
         const ModuleInfo* info = exprs.find(&pathExpr);

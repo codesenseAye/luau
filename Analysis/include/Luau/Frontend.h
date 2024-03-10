@@ -126,11 +126,6 @@ struct FrontendModuleResolver : ModuleResolver
     const std::shared_ptr<SourceModule> getSourceModule(const ModuleName& moduleName) const override;
     bool moduleExists(const ModuleName& moduleName) const override;
     std::optional<ModuleInfo> resolveModuleInfo(const ModuleName& currentModuleName, const AstExpr& pathExpr) override;
-    std::optional<ModuleInfo> getMatch(const AstExprConstantString*stringKey);
-    std::optional<ModuleInfo> getMatch(const std::string stringKey);
-    std::optional<ModuleInfo> getMatchFromString(const std::string str);
-    std::optional<ModuleInfo> getSpecificModuleMatch(const ModuleName &name, std::vector<std::string_view> query, unsigned int queryNum);
-    bool matchQueryToPieces(std::vector<std::string_view> query, unsigned int queryNum, std::vector<std::string_view> piece, unsigned int piecesNum);
     
     std::optional<std::string> getRoot();
     std::string getHumanReadableModuleName(const ModuleName& moduleName) const override;

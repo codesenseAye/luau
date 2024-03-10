@@ -47,7 +47,7 @@ struct FileResolver
 
     virtual std::optional<ModuleInfo> resolveModule(const ModuleInfo* context, AstExpr* expr, Luau::SourceModule *sourceModule = nullptr)
     {
-        std::cerr << "TEST RESOLVE MODULE 0" << "\n";
+        // std::cerr << "TEST RESOLVE MODULE 0" << "\n";
         return std::nullopt;
     }
 
