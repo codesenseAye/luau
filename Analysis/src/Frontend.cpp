@@ -447,15 +447,8 @@ CheckResult Frontend::check(const ModuleName& name, std::optional<FrontendOption
     if (std::optional<CheckResult> result = getCheckResult(name, true, frontendOptions.forAutocomplete))
         return std::move(*result);
 
-    //!! critical to getting types from required modules
-    // called from checkStrict function
-
     std::vector<ModuleName> buildQueue;
     bool cycleDetected = parseGraph(buildQueue, name, frontendOptions.forAutocomplete);
-
-    // for (auto item : buildQueue) {
-    //     std::cerr << "item in build queue: " << item.c_str() << "\n";
-    // }
 
     DenseHashSet<Luau::ModuleName> seen{{}};
     std::vector<BuildQueueItem> buildQueueItems;
@@ -658,7 +651,6 @@ std::vector<ModuleName> Frontend::checkQueuedModules(std::optional<FrontendOptio
                 if (itemWithException || cancelled)
                     break;
 
-                // std::cerr << "check build queue item 3" << "\n";
                 recordItemResult(item);
 
                 // Notify items that were waiting for this dependency
@@ -699,7 +691,6 @@ std::vector<ModuleName> Frontend::checkQueuedModules(std::optional<FrontendOptio
 
             // We might have stopped because of a pending exception
             if (itemWithException)
-                // std::cerr << "check build queue item 2" << "\n";
                 recordItemResult(buildQueueItems[*itemWithException]);
         }
 
@@ -812,7 +803,6 @@ bool Frontend::parseGraph(
             // push children
             for (const ModuleName& dep : top->requireSet)
             {
-                // std::cerr << "child: " << dep.c_str() << "\n";
                 auto it = sourceNodes.find(dep);
                 if (it != sourceNodes.end())
                 {
@@ -821,13 +811,11 @@ bool Frontend::parseGraph(
                     // thus if a node is not dirty, all its transitive deps aren't dirty, which means that they won't ever need
                     // to be built, *and* can't form a cycle with any nodes we did process.
                     if (!it->second->hasDirtyModule(forAutocomplete)) {
-                        // std::cerr << "no dirty module: " << dep.c_str() << "\n";
                         continue;
                     }
 
                     // This module might already be in the outside build queue
                     if (canSkip && canSkip(dep)) {
-                        // std::cerr << "can skip: " << dep.c_str() << "\n";
                         continue;
                     }
 
@@ -1383,17 +1371,6 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
     opts.captureComments = true;
     SourceModule result = parse(name, source->source, opts);
     result.type = source->type;
-
-    // !!!!!!!
-    // when these lines below in this function are commented out the . autocomplete doesnt work for any require/shard
-    // figure out the difference between requires not having to open a module but a shared call having to
-    // to get autcomplete
-    
-    // !! privateTypePackBindings, is the thing you commented out that fixed the last difference
-    // maybe there is another area with the same variable that could fix  this
-    // eventually you need to figure out why that variable did that and implement a proper solution
-
-    // std::cerr << "get source node: " << name << "\n";
 
     RequireTraceResult& require = requireTrace[name];
 

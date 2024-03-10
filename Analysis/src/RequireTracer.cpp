@@ -40,7 +40,6 @@ struct RequireTracer : AstVisitor
     bool visit(AstExprCall* expr) override
     {
         AstExprGlobal* global = expr->func->as<AstExprGlobal>();
-        // std::cerr << "visit tracer" << "\n";
         
         if (global && (global->name == "require" || global->name == "shared") && expr->args.size >= 1) {
             requireCalls.push_back(expr);
@@ -97,7 +96,6 @@ struct RequireTracer : AstVisitor
 
     void process()
     {
-        // std::cerr << "PROCESS!!!!" << "\n";
         ModuleInfo moduleContext{currentModuleName};
 
         // seed worklist with require arguments
@@ -128,19 +126,14 @@ struct RequireTracer : AstVisitor
 
                 // locals just inherit their dependent context, no resolution required
                 if (expr->is<AstExprLocal>()) {
-                    // std::cerr << "solve 2" << "\n";
                     info = context ? std::optional<ModuleInfo>(*context) : std::nullopt;
                 } else {
-                    // std::cerr << "solve 1" << "\n";
                     info = fileResolver->resolveModule(context, expr, sourceModule);                
-                    // info = fileResolver->resolveModule(context, expr);
                 }
             }
             else
             {
-                // std::cerr << "solve 3" << "\n";
                 info = fileResolver->resolveModule(&moduleContext, expr, sourceModule);                
-                // info = fileResolver->resolveModule(&moduleContext, expr, sourceModule);                
             }
 
             if (info)

@@ -4701,8 +4701,6 @@ TypeId TypeChecker::checkRequire(const ScopePtr& scope, const ModuleInfo& module
         // either the file does not exist or there's a cycle. If there's a cycle
         // we will already have reported the error.
 
-        // !! this plays a part in the autocomplete
-
         bool exists = resolver->moduleExists(moduleInfo.name);
 
         if (!exists && !moduleInfo.optional) {

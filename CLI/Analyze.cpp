@@ -170,7 +170,6 @@ struct CliFileResolver : Luau::FileResolver
 
     std::optional<Luau::ModuleInfo> resolveModule(const Luau::ModuleInfo* context, Luau::AstExpr* node, Luau::SourceModule *src = nullptr) override
     {
-        // std::cerr << "TEST RESOLVE MODULE -2" << "\n";
         if (Luau::AstExprConstantString* expr = node->as<Luau::AstExprConstantString>())
         {
             Luau::ModuleName name = std::string(expr->value.data, expr->value.size) + ".luau";
@@ -384,7 +383,7 @@ int main(int argc, char** argv)
 #endif
 
     std::vector<std::string> files = getSourceFiles(argc, argv);
-    // std::cerr << "base path: " << basePath.c_str() << "\n";
+
     for (const std::string& path : files)
         frontend.queueModuleCheck(path);
 
