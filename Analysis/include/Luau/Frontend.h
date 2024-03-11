@@ -158,6 +158,7 @@ struct Frontend
     
     struct Source {
         std::vector<std::string> workspaceFolders;
+        std::vector<std::string> sourceNodeNames;
     };
 
     Frontend(FileResolver* fileResolver, ConfigResolver* configResolver, const FrontendOptions& options = {});

@@ -77,9 +77,9 @@ bool isWithinComment(const ParseResult& result, Position pos)
     return isWithinComment(result.commentLocations, pos);
 }
 
-std::optional<Luau::HotComment> getHotComment(const SourceModule& sourceModule, Position pos) {
-    if (sourceModule.hotcomments.size() > 0) {
-        for (auto comment : sourceModule.hotcomments) {
+std::optional<Luau::HotComment> getHotComment(std::vector<Luau::HotComment> hotcomments, Position pos) {
+    if (hotcomments.size() > 0) {
+        for (auto comment : hotcomments) {
             if (comment.location.end.line == pos.line && comment.location.begin.line == pos.line) {
                 return comment;
             }

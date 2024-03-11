@@ -175,15 +175,12 @@ LoadDefinitionFileResult Frontend::loadDefinitionFile(GlobalTypes& globals, Scop
 
     Luau::ParseResult parseResult = parseSourceForModule(source, sourceModule, captureComments);
     if (parseResult.errors.size() > 0) {
-        std::cerr << "check1" << "\n";
         return LoadDefinitionFileResult{false, parseResult, sourceModule, nullptr};
     }
 
     ModulePtr checkedModule = check(sourceModule, Mode::Definition, {}, std::nullopt, /*forAutocomplete*/ false, /*recordJsonLog*/ false, {});
 
     if (checkedModule->errors.size() > 0) {
-        std::cerr << "check2" << "\n";
-        std::cerr << "error: " << checkedModule->errors.begin()->location.begin.line << "\n";
         return LoadDefinitionFileResult{false, parseResult, sourceModule, checkedModule};
     }
 
@@ -1043,7 +1040,6 @@ void Frontend::checkBuildQueueItems(std::vector<BuildQueueItem>& items)
         if (item.module && item.module->cancelled)
             break;
 
-        // std::cerr << "check build queue item 1" << "\n";
         recordItemResult(item);
     }
 }
@@ -1381,9 +1377,11 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
 
     std::shared_ptr<SourceNode>& sourceNode = sourceNodes[name];
 
-    if (!sourceNode)
+    if (!sourceNode) {
         sourceNode = std::make_shared<SourceNode>();
-
+        // this->source.sourceNodeNames.emplace_back(name);
+    }
+    
     std::shared_ptr<SourceModule>& sourceModule = sourceModules[name];
 
     if (!sourceModule)
