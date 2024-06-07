@@ -1011,15 +1011,15 @@ void Frontend::checkBuildQueueItem(BuildQueueItem& item)
             module->scopes.clear();
     }
 
-    if (mode != Mode::NoCheck)
-    {
-        for (const RequireCycle& cyc : requireCycles)
-        {
-            TypeError te{cyc.location, item.name, ModuleHasCyclicDependency{cyc.path}};
+    // if (mode != Mode::NoCheck)
+    // {
+    //     for (const RequireCycle& cyc : requireCycles)
+    //     {
+    //         TypeError te{cyc.location, item.name, ModuleHasCyclicDependency{cyc.path}};
 
-            module->errors.push_back(te);
-        }
-    }
+    //         module->errors.push_back(te);
+    //     }
+    // }
 
     ErrorVec parseErrors;
 
