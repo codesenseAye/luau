@@ -1389,7 +1389,7 @@ std::pair<SourceNode*, SourceModule*> Frontend::getSourceNode(const ModuleName& 
 
     *sourceModule = std::move(result);
     sourceModule->environmentName = environmentName;
-
+    
     require = traceRequires(fileResolver, &*sourceModule, result.root, name);
 
     sourceNode->name = sourceModule->name;
